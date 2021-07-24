@@ -1,0 +1,28 @@
+/*База данных содержит список аэропортов практически всех крупных городов России. В большинстве городов есть только один аэропорт. Исключение составляет*/
+select arp.city,
+    count(arp.airport_name)
+from dst_project.airports arp
+group by arp.city
+having count (arp.airport_name) > 1;
+/*Ulyanovsk 2
+Moscow 3*/
+
+/*Вопрос 1. Таблица рейсов содержит всю информацию о прошлых, текущих и запланированных рейсах. Сколько всего статусов для рейсов определено в таблице?*/
+select count(distinct flt.status)
+from dst_project.flights flt;
+/* 6*/
+
+/*Какое количество самолетов находятся в воздухе на момент среза в базе (статус рейса «самолёт уже вылетел и находится в воздухе»).*/
+select count(flt.status)
+from dst_project.flights flt
+where flt.status = 'Departed'; /*58*/
+
+/*Места определяют схему салона каждой модели. Сколько мест имеет самолет модели 773 (Boeing 777-300)?*/
+select count (distinct sts.seat_no)
+from dst_project.seats sts
+where aircraft_code = '773';/*402*/
+
+/* Сколько состоявшихся (фактических) рейсов было совершено между 1 апреля 2017 года и 1 сентября 2017 года?*/
+select count(flt.flight_no)
+from dst_project.flights flt
+where (actual_arrival between '04.01.2017' and '09.01.2017') and flt.status = 'Arrived';/*74227*/
