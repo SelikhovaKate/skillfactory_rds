@@ -26,3 +26,80 @@ where aircraft_code = '773';/*402*/
 select count(flt.flight_no)
 from dst_project.flights flt
 where (actual_arrival between '04.01.2017' and '09.01.2017') and flt.status = 'Arrived';/*74227*/
+
+/*Сколько всего рейсов было отменено по данным базы?*/
+select count(flt.status)
+from dst_project.flights flt
+where flt.status = 'Cancelled'; /*437*/
+
+/*Сколько самолетов моделей типа Boeing, Sukhoi Superjet, Airbus находится в базе авиаперевозок?*/
+select case 
+    when acrf.model like 'Boeing%' then 'Boeing' /*3*/
+    when acrf.model like 'Sukhoi Superjet%' then 'Sukhoi Superjet' /*1*/
+    when acrf.model like 'Airbus%' then 'Airbus' /*3*/
+    end,
+    count (acrf.model)
+from dst_project.aircrafts acrf
+group by 1;
+
+
+/* 3. В какой части (частях) света находится больше аэропортов?*/
+select case 
+    when arp.timezone like 'Eu%' then 'Europe' /*52*/
+    when arp.timezone like 'Asi%' then 'Asia' /*52*/
+    when arp.timezone like 'Austral' then 'Australia'
+    end,
+    count (arp.timezone)
+from dst_project.airports arp
+group by 1;
+
+/*У какого рейса была самая большая задержка прибытия за все время сбора данных? Введите id рейса (flight_id).*/
+select flt.flight_id, 
+        (flt.actual_arrival - flt.scheduled_arrival) as delay_arrival
+from dst_project.flights flt
+where flt.actual_arrival is not null
+order by (flt.actual_arrival - flt.scheduled_arrival) desc
+limit 1;
+
+/* Когда был запланирован самый первый вылет, сохраненный в базе данных?*/
+select max(flt.scheduled_departure)
+from dst_project.flights flt /*август 14, 2016, 11:45 вечера*/
+
+/*. Сколько минут составляет запланированное время полета в самом длительном рейсе?*/
+select date_part('hour', flt.scheduled_arrival - flt.scheduled_departure) * 60 + 
+        date_part('minute', scheduled_arrival - scheduled_departure) as time_fly
+from dst_project.flights flt
+order by time_fly desc /*530*/
+
+/*Между какими аэропортами пролегает самый длительный по времени запланированный рейс?*/
+select  flt.departure_airport,
+        flt.arrival_airport,
+        date_part('hour', flt.scheduled_arrival - flt.scheduled_departure) * 60 + 
+        date_part('minute', scheduled_arrival - scheduled_departure) as time_fly
+from dst_project.flights flt
+order by time_fly desc /*DME UUS*/
+
+/*Сколько составляет средняя дальность полета среди всех самолетов в минутах? Секунды округляются в меньшую сторону (отбрасываются до минут).*/
+select avg( date_part('hour', flt.scheduled_arrival - flt.scheduled_departure) * 60 + 
+        date_part('minute', scheduled_arrival - scheduled_departure) + 
+        date_part('seconds', scheduled_arrival - scheduled_departure) ) as time_fly
+from dst_project.flights flt /*128*/
+
+/*Мест какого класса у SU9 больше всего*/
+select sts.aircraft_code, 
+        sts.fare_conditions,
+        count(sts.fare_conditions)
+from dst_project.seats sts
+group by 1,2
+where sts.aircraft_code = 'SU9' /*Economy 85*/
+
+/*Какую самую минимальную стоимость составило бронирование за всю историю?*/
+select min(bkg.total_amount)
+from dst_project.bookings bkg /*3400*/
+
+/*Какой номер места был у пассажира с id = 4313 788533?*/
+select tks.passenger_id,
+        brp.seat_no
+from dst_project.tickets tks
+        join dst_project.boarding_passes brp on tks.ticket_no = brp.ticket_no
+where tks.passenger_id = '4313 788533' /*2A*/
