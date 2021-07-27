@@ -63,13 +63,13 @@ limit 1;
 
 /* Когда был запланирован самый первый вылет, сохраненный в базе данных?*/
 select max(flt.scheduled_departure)
-from dst_project.flights flt /*август 14, 2016, 11:45 вечера*/
+from dst_project.flights flt; /*август 14, 2016, 11:45 вечера*/
 
 /*. Сколько минут составляет запланированное время полета в самом длительном рейсе?*/
 select date_part('hour', flt.scheduled_arrival - flt.scheduled_departure) * 60 + 
         date_part('minute', scheduled_arrival - scheduled_departure) as time_fly
 from dst_project.flights flt
-order by time_fly desc /*530*/
+order by time_fly desc; /*530*/
 
 /*Между какими аэропортами пролегает самый длительный по времени запланированный рейс?*/
 select  flt.departure_airport,
@@ -77,13 +77,13 @@ select  flt.departure_airport,
         date_part('hour', flt.scheduled_arrival - flt.scheduled_departure) * 60 + 
         date_part('minute', scheduled_arrival - scheduled_departure) as time_fly
 from dst_project.flights flt
-order by time_fly desc /*DME UUS*/
+order by time_fly desc; /*DME UUS*/
 
 /*Сколько составляет средняя дальность полета среди всех самолетов в минутах? Секунды округляются в меньшую сторону (отбрасываются до минут).*/
 select avg( date_part('hour', flt.scheduled_arrival - flt.scheduled_departure) * 60 + 
         date_part('minute', scheduled_arrival - scheduled_departure) + 
         date_part('seconds', scheduled_arrival - scheduled_departure) ) as time_fly
-from dst_project.flights flt /*128*/
+from dst_project.flights flt; /*128*/
 
 /*Мест какого класса у SU9 больше всего*/
 select sts.aircraft_code, 
@@ -91,15 +91,59 @@ select sts.aircraft_code,
         count(sts.fare_conditions)
 from dst_project.seats sts
 group by 1,2
-where sts.aircraft_code = 'SU9' /*Economy 85*/
+where sts.aircraft_code = 'SU9'; /*Economy 85*/
 
 /*Какую самую минимальную стоимость составило бронирование за всю историю?*/
 select min(bkg.total_amount)
-from dst_project.bookings bkg /*3400*/
+from dst_project.bookings bkg; /*3400*/
 
 /*Какой номер места был у пассажира с id = 4313 788533?*/
 select tks.passenger_id,
         brp.seat_no
 from dst_project.tickets tks
         join dst_project.boarding_passes brp on tks.ticket_no = brp.ticket_no
-where tks.passenger_id = '4313 788533' /*2A*/
+where tks.passenger_id = '4313 788533'; /*2A*/
+
+/*Анапа — курортный город на юге России. Сколько рейсов прибыло в Анапу за 2017 год?*/
+select count (flt.flight_no)
+from dst_project.flights flt
+    left join dst_project.airports arp on arp.airport_code = flt.arrival_airport
+where arp.airport_name like 'Anap%' and flt.scheduled_arrival between '1 January 2017' and '31 December 2017' and flt.status = 'Arrived'; /*486*/
+
+/*Сколько рейсов из Анапы вылетело зимой 2017 года?*/
+select count(distinct flt.scheduled_departure)
+from dst_project.flights flt
+    left join dst_project.airports arp on arp.airport_code = flt.departure_airport
+where arp.airport_name like 'Anap%' 
+        and (date_part('year', flt.actual_departure) = 2017)
+        and (date_part('month', flt.actual_departure) in (12, 1, 2));  /*127*/
+        
+/*Посчитайте количество отмененных рейсов из Анапы за все время.*/
+select count (flt.departure_airport)
+from dst_project.flights flt
+    left join dst_project.airports arp on arp.airport_code = flt.departure_airport
+where arp.airport_name like 'Anap%' and flt.status = 'Cancelled';/*1*/
+
+/*Сколько рейсов из Анапы не летают в Москву?*/
+select count (flt.flight_no)
+from dst_project.flights flt
+    left join dst_project.airports arp on arp.airport_code = flt.departure_airport
+where arp.airport_name like 'Anap%' and flt.arrival_airport not in ( 
+                                                        select arp.airport_code
+                                                        from dst_project.airports arp
+                                                        where arp.city = 'Moscow'); /*453*/
+
+/*Какая модель самолета летящего на рейсах из Анапы имеет больше всего мест?*/
+select case
+    when arc.model = 'Boeing 737-300' then 'Boeing 737-300'
+    when arc.model = 'Boeing 777-300' then 'Boeing 777-300'
+    when arc.model = 'Airbus A319-100' then 'Airbus A319-100'
+    when arc.model = 'Bombardier CRJ-200' then 'Bombardier CRJ-200'
+    end,
+    count (distinct sts.seat_no)
+from dst_project.flights flt
+    left join dst_project.airports arp on arp.airport_code = flt.departure_airport
+    left join dst_project.aircrafts arc on arc.aircraft_code = flt.aircraft_code
+    left join dst_project.seats sts on sts.aircraft_code = flt.aircraft_code
+where arp.airport_name like 'Anap%'
+group by 1;
