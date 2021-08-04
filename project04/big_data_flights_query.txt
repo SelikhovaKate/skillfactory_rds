@@ -1,0 +1,43 @@
+with ticket_revenue as (
+        select tcf.flight_id,
+            /*count(case when tcf.fare_conditions = 'Economy' then tcf.fare_conditions end)  as ticket_economy,
+            count(case when tcf.fare_conditions = 'Comfort' then tcf.fare_conditions end)  as ticket_comfort,
+            count(case when tcf.fare_conditions = 'Business' then tcf.fare_conditions end) as ticket_bisiness,*/
+            count (tcf.fare_conditions) as ticket_sale_total,
+            /*sum(case when tcf.fare_conditions = 'Economy' then tcf.amount end)  as amount_economy,
+            sum(case when tcf.fare_conditions = 'Comfort' then tcf.amount end)  as amount_comfort,
+            sum(case when tcf.fare_conditions = 'Business' then tcf.amount end) as amount_bisiness,*/
+            sum (tcf.amount) as amount_total
+        from dst_project.ticket_flights tcf
+        group by 1
+        ),
+    seats_airplane as(
+        select sts.aircraft_code,
+        /*count(case when sts.fare_conditions = 'Economy' then sts.fare_conditions end)  as seats_economy,
+        count(case when sts.fare_conditions = 'Comfort' then sts.fare_conditions end)  as seats_comfort,
+        count(case when sts.fare_conditions = 'Business' then sts.fare_conditions end) as seats_bisiness,*/
+        count (sts.fare_conditions) as seats_total
+        from dst_project.seats sts
+        group by 1
+    )    
+select flt.flight_id,
+        flt.flight_no,
+        flt.aircraft_code,
+        arc.model,
+        flt.departure_airport,
+        flt.arrival_airport,
+        arp.city,
+        date_part('month', flt.scheduled_departure) as month_flight,
+        seats_airplane.seats_total,
+        ticket_revenue.ticket_sale_total,
+        ticket_revenue.amount_total,
+        date_part('hour', flt.scheduled_arrival - flt.scheduled_departure) * 60 + 
+        date_part('minute', scheduled_arrival - scheduled_departure) as time_fly
+from dst_project.flights flt
+        left join seats_airplane on seats_airplane.aircraft_code = flt.aircraft_code
+        left join ticket_revenue on ticket_revenue.flight_id = flt.flight_id
+        left join dst_project.airports arp on arp.airport_code = flt.arrival_airport
+        left join dst_project.aircrafts arc on arc.aircraft_code = flt.aircraft_code
+where flt.departure_airport = 'AAQ'
+        and (date_trunc('month', flt.scheduled_departure) in ('2017-01-01','2017-02-01', '2016-12-01'))
+        and flt.status not in ('Cancelled')
